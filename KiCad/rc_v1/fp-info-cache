@@ -1,4 +1,4 @@
-22421586791695347
+22424996054076039
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -55076,11 +55076,25 @@ tact sw push 6mm
 4
 2
 Footprint Library
+SW_Slide_SPDT_CIT_MS1202L6
+
+
+0
+5
+3
+Footprint Library
 SW_Slide_SPDT_CIT_SLW-1276864-4A-D
 
 
 0
 3
+3
+Footprint Library
+SW_Slide_SPDT_CK_OS102011MS2Qxxx
+
+
+0
+5
 3
 Footprint Library
 USB_C_Receptacle_CUI_UJC-HP2-3-SMT-TR_6P_Horizontal
