@@ -4,8 +4,8 @@ int pot2 = A1;
 int mot1 = 9;
 int mot2 = 10;
 
-int fg1 = 3;
-int fg2 = 2;
+int fg1 = 2;
+int fg2 = 3;
 
 unsigned long time1 = 0;
 int freq1 = 0;
@@ -24,6 +24,8 @@ TM1637Display display2(CLK2, DIO2);
 
 void setup() {
   Serial.begin(9600);
+  pinMode(pot1,INPUT_PULLUP);
+  pinMode(pot2,INPUT_PULLUP);
   pinMode(mot1,OUTPUT);
   pinMode(mot2,OUTPUT);
   TCCR1A = _BV(COM1A1) | _BV(COM1B1) | _BV(WGM10);
@@ -41,26 +43,31 @@ void setup() {
 
 void loop() {
 
-  float in1 = analogRead(pot1) * 255.0 / 1023.0;
+  float in1 = 255.0 - analogRead(pot1) * 255.0 / 1023.0;
   in1 = 60.0 + in1 / 255.0 * 95.0;
-  if (in1 <= 62.0) {
+  if (in1 <= 64.0) {
     in1 = 0.0;
   }
-  else if (in1 >= 152.0) {
+  else if (in1 >= 150.0) {
     in1 = 255.0;
   }
 
-  float in2 = analogRead(pot2) * 255.0 / 1023.0;
+  float in2 = 255.0 - analogRead(pot2) * 255.0 / 1023.0;
   in2 = 60.0 + in2 / 255.0 * 95.0;
-  if (in2 <= 62.0) {
+  if (in2 <= 64.0) {
     in2 = 0.0;
   }
-  else if (in2 >= 152.0) {
+  else if (in2 >= 150.0) {
     in2 = 255.0;
   }
 
-  OCR1B = in1;
-  OCR1A = in2;
+  //float in1_max = 60.0 + (freq1 + 1000.0) / 8400.0 * 95.0;
+  //in1 = min(in1, in1_max);
+  //float in2_max = 60.0 + (freq2 + 1000.0) / 8400.0 * 95.0;
+  //in2 = min(in2, in2_max);
+
+  OCR1A = in1;
+  OCR1B = in2;
   
   //analogWrite(mot1, in1);
   //analogWrite(mos2, in2);
@@ -103,6 +110,10 @@ void loop() {
   Serial.print(", ");
   Serial.print(in2);
   Serial.print(", ");
+//  Serial.print(in1_max);
+//  Serial.print(", ");
+//  Serial.print(in2_max);
+//  Serial.print(", ");
   Serial.print(freq1);
   Serial.print(", ");
   Serial.print(freq2);
@@ -113,7 +124,7 @@ void loop() {
 
 void count1() {
   counter1 = ++counter1;
-  if (counter1 >= 60) {
+  if (counter1 >= 12) {
     unsigned long delta1 = micros() - time1;
     time1 = micros();
     freq1 = counter1 * 1000000.0 / delta1 / 12.0 * 60;
@@ -123,7 +134,7 @@ void count1() {
 
 void count2() {
   counter2 = ++counter2;
-  if (counter2 >= 60) {
+  if (counter2 >= 12) {
     unsigned long delta2 = micros() - time2;
     time2 = micros();
     freq2 = counter2 * 1000000.0 / delta2 / 12.0 * 60;
