@@ -95,16 +95,16 @@ void setup() {
   analogWriteResolution(12);
 
   //====================
-  // ESC Calibration
+  // ESC Setup
 
   escUpper.attach(escPin[0]);
   escLower.attach(escPin[1]);
-  escUpper.writeMicroseconds(2000);
-  escLower.writeMicroseconds(2000);
-  delay(3000);
-  escUpper.writeMicroseconds(1000);
-  escLower.writeMicroseconds(1000);
-  delay(2000);
+  // escUpper.writeMicroseconds(2000);
+  // escLower.writeMicroseconds(2000);
+  // delay(3000);
+  // escUpper.writeMicroseconds(1000);
+  // escLower.writeMicroseconds(1000);
+  // delay(2000);
 
   //====================
   // ESP-NOW setup
@@ -138,11 +138,6 @@ void loop() {
 
   checkMeasureSpeedTimeout();
 
-  Serial.print(speedUpper);
-  Serial.print(", ");
-  Serial.print(speedLower);
-  Serial.print(", ");
-
   sendMessage();
   checkConnectionTimeout();
 
@@ -150,11 +145,16 @@ void loop() {
   Serial.print(", ");
   Serial.print(speedSetpointUpper);
   Serial.print(", ");
+  Serial.print(speedUpper);
+  Serial.print(", ");
   Serial.print(speedSetpointLower);
-  Serial.println(" ");
-  
-  escUpper.writeMicroseconds(speedSetpointUpper * 1000 / 5676 + 1000);
-  escLower.writeMicroseconds(speedSetpointLower * 1000 / 5676 + 1000);
+  Serial.print(", ");
+  Serial.print(speedLower);
+  Serial.print(", ");
+
+  controlSpeed();
+
+  //escUpper.writeMicroseconds(speedSetpointUpper * 1000 / 5676 + 1000);
 
   delay(1);
 }
@@ -180,7 +180,7 @@ void measureSpeedUpper() {
   if (changeCounter1 >= 14) {
     int delta1 = micros() - changeTime1;
     changeTime1 = micros();
-    speedLower = changeCounter1 * 1000000.0 * 60.0 / delta1 / 14.0;
+    speedUpper = changeCounter1 * 1000000.0 * 60.0 / delta1 / 14.0;
     changeCounter1 = 0;
   }
 }
@@ -193,7 +193,7 @@ void measureSpeedLower() {
   if (changeCounter2 >= 14) {
     int delta2 = micros() - changeTime2;
     changeTime2 = micros();
-    speedUpper = changeCounter2 * 1000000.0 * 60.0 / delta2 / 14.0;
+    speedLower = changeCounter2 * 1000000.0 * 60.0 / delta2 / 14.0;
     changeCounter2 = 0;
   }
 }
@@ -204,12 +204,12 @@ void measureSpeedLower() {
 int measureSpeedTimeoutDelay = 1000000;
 
 void checkMeasureSpeedTimeout() {
-  if (currentTime - changeTime1 >= measureSpeedTimeoutDelay) {
+  if (micros() - changeTime1 >= measureSpeedTimeoutDelay) {
     changeTime1 = micros();
     speedUpper = 0;
     changeCounter1 = 0;
   }
-  if (currentTime - changeTime2 >= measureSpeedTimeoutDelay) {
+  if (micros() - changeTime2 >= measureSpeedTimeoutDelay) {
     changeTime2 = micros();
     speedLower = 0;
     changeCounter2 = 0;
@@ -225,10 +225,29 @@ void checkConnectionTimeout() {
   if (currentTime - receiveTime > connectionTimeoutDelay) {
     connectionTimeout = true;
     dataSize = 0;
-    speedUpper = 0;
-    speedLower = 0;
+    speedSetpointUpper = 0;
+    speedSetpointLower = 0;
   }
   else {
     connectionTimeout = false;
   }
+}
+
+//====================
+// controlSpeed function
+
+float maxTorqueFactor = 0.3;
+float Kp = 1 / 6000.0;
+
+void controlSpeed() {
+
+  float speedErrorUpper = speedSetpointUpper - speedUpper;
+  float throttleMaxUpper = maxTorqueFactor + speedUpper / 5676.0;
+  float throttleUpper = constrain(Kp*speedErrorUpper, 0, throttleMaxUpper);
+
+  Serial.print(throttleUpper);
+  Serial.println(" ");
+    
+  escUpper.writeMicroseconds(throttleUpper * 1000 + 1000);
+  //escLower.writeMicroseconds(throttleLower * 1000 + 1000);
 }
