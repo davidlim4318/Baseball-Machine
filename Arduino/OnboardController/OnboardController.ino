@@ -11,27 +11,54 @@
 
 const int
   escPin[2] = { 2, 3 },
-  hallSensorPin[2] = { 12, 13 };
+  hallSensorPin[2] = { 11, 12 };
 ;
 
 //====================
 // General variables/objects
 
 int currentTime = 0;
-int receiveTime = 0;
 
-int dataSize;
 int speedSetpointUpper;
 int speedSetpointLower;
 
 int speedUpper;
 int speedLower;
 
+int receiveTime = 0;
+int dataSize;
+
+boolean connectionTimeout = false;
+
 Servo escUpper;
 Servo escLower;
 
 //====================
-// ESP-NOW definitions
+// ESP-NOW definitions to send message
+
+uint8_t broadcastAddress[] = { 0x48, 0x27, 0xE2, 0xFD, 0x6B, 0xA4};
+
+typedef struct struct_message_onboard {
+  int value1;
+  int value2;
+} struct_message_onboard;
+
+struct_message_onboard messageToSend;
+
+esp_now_peer_info_t peerInfo;
+
+esp_now_send_status_t currentStatus;
+
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+  if (currentStatus != status) {
+    currentStatus = status;
+    Serial.print("Connection Status: ");
+    Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Success" : "Fail");
+  }
+}
+
+//====================
+// ESP-NOW definitions to receive message
 
 typedef struct struct_message_remote {
   int value1;
@@ -89,6 +116,17 @@ void setup() {
     return;
   }
   
+  esp_now_register_send_cb(OnDataSent);
+
+  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+  peerInfo.channel = 0;  
+  peerInfo.encrypt = false;
+
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Failed to add peer");
+    return;
+  }
+
   esp_now_register_recv_cb(OnDataRecv);
 }
 
@@ -97,24 +135,38 @@ void setup() {
 
 void loop() {
   currentTime = millis();
-  
+
+  checkMeasureSpeedTimeout();
+
+  Serial.print(speedUpper);
+  Serial.print(", ");
+  Serial.print(speedLower);
+  Serial.print(", ");
+
+  sendMessage();
+  checkConnectionTimeout();
+
   Serial.print(dataSize);
   Serial.print(", ");
   Serial.print(speedSetpointUpper);
   Serial.print(", ");
   Serial.print(speedSetpointLower);
-  Serial.print(", ");
-  Serial.print(speedUpper);
-  Serial.print(", ");
-  Serial.print(speedLower);
   Serial.println(" ");
   
-  escUpper.writeMicroseconds(speedSetpointUpper * 1000 / 4095 + 1000);
-  escLower.writeMicroseconds(speedSetpointLower * 1000 / 4095 + 1000);
+  escUpper.writeMicroseconds(speedSetpointUpper * 1000 / 5676 + 1000);
+  escLower.writeMicroseconds(speedSetpointLower * 1000 / 5676 + 1000);
 
-  checkMeasureSpeedTimeout();
-  checkConnectionTimeout();
   delay(1);
+}
+
+//====================
+// sendMessage function
+
+void sendMessage() {
+  messageToSend.value1 = speedUpper;
+  messageToSend.value2 = speedLower;
+
+  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &messageToSend, sizeof(messageToSend));
 }
 
 //====================
@@ -167,12 +219,16 @@ void checkMeasureSpeedTimeout() {
 //====================
 // checkConnectionTimeout function
 
-int connectionTimeoutDelay = 10;
+int connectionTimeoutDelay = 100;
 
 void checkConnectionTimeout() {
   if (currentTime - receiveTime > connectionTimeoutDelay) {
+    connectionTimeout = true;
     dataSize = 0;
-    speedSetpointUpper = 0;
-    speedSetpointLower = 0;
+    speedUpper = 0;
+    speedLower = 0;
+  }
+  else {
+    connectionTimeout = false;
   }
 }

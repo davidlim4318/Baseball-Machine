@@ -31,10 +31,19 @@ boolean saveCommand = false;
 int speedSetpointUpper;
 int speedSetpointLower;
 
+int speedUpper;
+int speedLower;
+
+int receiveTime = 0;
+int dataSize;
+
+boolean connectionTimeout = false;
+boolean knobReset = false;
+
 TM1637TinyDisplay6 display(clkPin, dioPin);
 
 //====================
-// ESP-NOW definitions
+// ESP-NOW definitions to send mesage
 
 uint8_t broadcastAddress[] = { 0xEC, 0xDA, 0x3B, 0x63, 0xAF, 0xEC };
 
@@ -58,21 +67,43 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 }
 
 //====================
-// Display Data
+// ESP-NOW definitions to receive message
 
-const uint8_t ANIMATION[12][6] = {
+typedef struct struct_message_onboard {
+  int value1;
+  int value2;
+} struct_message_onboard;
+
+struct_message_onboard messageToReceive;
+
+void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+  memcpy(&messageToReceive, incomingData, sizeof(messageToReceive));
+
+  receiveTime = currentTime;
+  dataSize = len;
+  speedUpper = messageToReceive.value1;
+  speedLower = messageToReceive.value2;
+}
+
+//====================
+// Animation Data
+
+const uint8_t ANIMATION1[6][6] = {
+  { 0x00, 0x00, 0x80, 0x00, 0x00, 0x00 },  // Frame 0
+  { 0x00, 0x80, 0x00, 0x00, 0x00, 0x00 },  // Frame 1
+  { 0x80, 0x00, 0x00, 0x00, 0x00, 0x00 },  // Frame 2
+  { 0x00, 0x00, 0x00, 0x80, 0x00, 0x00 },  // Frame 3
+  { 0x00, 0x00, 0x00, 0x00, 0x80, 0x00 },  // Frame 4
+  { 0x00, 0x00, 0x00, 0x00, 0x00, 0x80 }   // Frame 5
+};
+
+const uint8_t ANIMATION2[6][6] = {
   { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },  // Frame 0
-  { 0x00, 0x00, 0x80, 0x00, 0x00, 0x00 },  // Frame 1
-  { 0x00, 0x80, 0x80, 0x00, 0x00, 0x00 },  // Frame 2
-  { 0x80, 0x80, 0x80, 0x00, 0x00, 0x00 },  // Frame 3
-  { 0x80, 0x80, 0x80, 0x00, 0x00, 0x80 },  // Frame 4
-  { 0x80, 0x80, 0x80, 0x00, 0x80, 0x80 },  // Frame 5
-  { 0x80, 0x80, 0x80, 0x80, 0x80, 0x80 },  // Frame 6
-  { 0x80, 0x80, 0x00, 0x80, 0x80, 0x80 },  // Frame 7
-  { 0x80, 0x00, 0x00, 0x80, 0x80, 0x80 },  // Frame 8
-  { 0x00, 0x00, 0x00, 0x80, 0x80, 0x80 },  // Frame 9
-  { 0x00, 0x00, 0x00, 0x80, 0x80, 0x00 },  // Frame 10
-  { 0x00, 0x00, 0x00, 0x80, 0x00, 0x00 }   // Frame 11
+  { 0x00, 0x00, 0x40, 0x00, 0x00, 0x40 },  // Frame 1
+  { 0x00, 0x40, 0x40, 0x00, 0x40, 0x40 },  // Frame 2
+  { 0x40, 0x40, 0x40, 0x40, 0x40, 0x40 },  // Frame 3
+  { 0x40, 0x40, 0x00, 0x40, 0x40, 0x00 },  // Frame 4
+  { 0x40, 0x00, 0x00, 0x40, 0x00, 0x00 }   // Frame 5
 };
 
 //====================
@@ -119,6 +150,8 @@ void setup() {
     Serial.println("Failed to add peer");
     return;
   }
+
+  esp_now_register_recv_cb(OnDataRecv);
 }
 
 //====================
@@ -126,21 +159,53 @@ void setup() {
 
 void loop() {
   currentTime = millis();
-  
-  int knob1Value = 4095 - analogRead(knobPin[0]);
-  int knob2Value = 4095 - analogRead(knobPin[1]);
-  speedSetpointUpper = knob1Value;
-  speedSetpointLower = knob2Value;
+
+  if (knobReset) {
+    setSpeed();
+  }
+  else {
+    checkKnobReset();
+  }
 
   checkButtonX();
   checkButtonY();
   checkFeedButton();
-  sendMessage();
+  displayStatus();
 
-  indicateStatus();
-  //playAnimation();
-  indicateBattery(knob1Value * 100 / 4095);
+  sendMessage();
+  checkConnectionTimeout();
+
+  if (connectionTimeout) {
+    displayAnimation1();
+  }
+  else if (!knobReset) {
+    displayAnimation2();
+  }
+  else {
+    displaySpeed();
+  }
+  //displayBattery(16);
+  
   delay(1);
+}
+
+//====================
+// setSpeed function
+
+void setSpeed() {
+  int knob1Value = (4095 - analogRead(knobPin[0])) * 5676 / 4095;
+  int knob2Value = (4095 - analogRead(knobPin[1])) * 5676 / 4095;
+  speedSetpointUpper = knob1Value;
+  speedSetpointLower = knob2Value;
+}
+
+//====================
+// checkKnobReset function
+
+void checkKnobReset() {
+  if (4095 - analogRead(knobPin[0]) == 0 && 4095 - analogRead(knobPin[1]) == 0) {
+    knobReset = true;
+  }
 }
 
 //====================
@@ -266,22 +331,12 @@ void checkFeedButton() {
 }
 
 //====================
-// sendMessage function
-
-void sendMessage() {
-  messageToSend.value1 = speedSetpointUpper;
-  messageToSend.value2 = speedSetpointLower;
-
-  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &messageToSend, sizeof(messageToSend));
-}
-
-//====================
-// indicateStatus function
+// displayStatus function
 
 int onDelay = 500;
 int saveTime = 0;
 
-void indicateStatus() {
+void displayStatus() {
   if (saveCommand) {
     saveTime = currentTime;
     saveCommand = false;
@@ -306,27 +361,94 @@ void indicateStatus() {
 }
 
 //====================
-// playAnimation function
+// sendMessage function
 
-int frameDelay = 200;
-int frameTime = 0;
-int counter = 0;
+void sendMessage() {
+  messageToSend.value1 = speedSetpointUpper;
+  messageToSend.value2 = speedSetpointLower;
 
-void playAnimation() {
-  if (currentTime - frameTime > frameDelay) {
-    display.setSegments(ANIMATION[counter]);
-    frameTime = currentTime;
-    counter++;
-    if (counter > 11) {
-      counter = 0;
-    }
+  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &messageToSend, sizeof(messageToSend));
+}
+
+//====================
+// checkConnectionTimeout function
+
+int connectionTimeoutDelay = 100;
+
+void checkConnectionTimeout() {
+  if (currentTime - receiveTime > connectionTimeoutDelay) {
+    connectionTimeout = true;
+    knobReset = false;
+    dataSize = 0;
+    speedUpper = 0;
+    speedLower = 0;
+  }
+  else {
+    connectionTimeout = false;
   }
 }
 
 //====================
-// indicateBattery function
+// displayAnimation1/2 functions
 
-void indicateBattery(int batteryLevel) {
+int frameDelay = 333;
+int frameTime = 0;
+int counter = 0;
+
+void displayAnimation1() {
+  if (counter > 5) {
+    counter = 0;
+  }
+  if (currentTime - frameTime > frameDelay) {
+    display.setSegments(ANIMATION1[counter]);
+    frameTime = currentTime;
+    counter++;
+  }
+}
+
+void displayAnimation2() {
+  if (counter > 5) {
+   counter = 0;
+  }
+  if (currentTime - frameTime > frameDelay) {
+    display.setSegments(ANIMATION2[counter]);
+    frameTime = currentTime;
+    counter++;
+  }
+}
+
+//====================
+// displaySpeed function
+
+void displaySpeed() {
+
+  int speedUpperMph = speedUpper * 0.02826243707;
+  int speedLowerMph = speedLower * 0.02826243707;
+
+  uint8_t data[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+  data[0] = display.encodeDigit(speedUpperMph % 10);
+  if (speedUpperMph >= 10) {
+    data[1] = display.encodeDigit((speedUpperMph / 10) % 10);
+    if (speedUpperMph >= 100) {
+      data[2] = display.encodeDigit((speedUpperMph / 100) % 10);
+    }
+  }
+  data[3] = display.encodeDigit(speedLowerMph % 10);
+  if (speedLowerMph >= 10) {
+    data[4] = display.encodeDigit((speedLowerMph / 10) % 10);
+    if (speedLowerMph >= 100) {
+      data[5] = display.encodeDigit((speedLowerMph / 100) % 10);
+    }
+  }
+
+  display.setSegments(data);
+}
+
+//====================
+// displayBattery function
+
+void displayBattery(int batteryLevel) {
   batteryLevel = constrain(batteryLevel,0,99);
   if (batteryLevel >= 66) {
     digitalWrite(ledPin[4], HIGH);
