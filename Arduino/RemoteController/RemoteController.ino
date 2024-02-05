@@ -16,12 +16,11 @@ const int
   joystickPin[2] = { A1, A0 },
   knobPin[2] = { A7, A2 },
   clkPin = A5,
-  dioPin = A4;
-
-TM1637TinyDisplay6 display(clkPin, dioPin);
+  dioPin = A4
+;
 
 //====================
-// General variables
+// General variables/objects
 
 int currentTime = 0;
 
@@ -31,6 +30,8 @@ boolean saveCommand = false;
 
 int speedSetpointUpper;
 int speedSetpointLower;
+
+TM1637TinyDisplay6 display(clkPin, dioPin);
 
 //====================
 // ESP-NOW definitions
@@ -91,8 +92,10 @@ void setup() {
   for (byte i = 0; i < 8; i++) {
     pinMode(buttonPin[i], INPUT_PULLUP);
   }
+  
   analogReadResolution(12);
   analogWriteResolution(12);
+
   display.begin();
   display.setBrightness(BRIGHT_HIGH);
 
