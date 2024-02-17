@@ -186,7 +186,7 @@ void loop() {
   }
   //displayBattery(16);
   
-  delay(1);
+  delay(10);
 }
 
 //====================

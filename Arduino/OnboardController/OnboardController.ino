@@ -10,8 +10,8 @@
 // Pins
 
 const int
-  escPin[2] = { 2, 3 },
-  hallSensorPin[2] = { 11, 12 };
+  escPin[2] = { 2, 4 },
+  hallSensorPin[2] = { 10, 12 };
 ;
 
 //====================
@@ -99,12 +99,6 @@ void setup() {
 
   escUpper.attach(escPin[0]);
   escLower.attach(escPin[1]);
-  // escUpper.writeMicroseconds(2000);
-  // escLower.writeMicroseconds(2000);
-  // delay(3000);
-  // escUpper.writeMicroseconds(1000);
-  // escLower.writeMicroseconds(1000);
-  // delay(2000);
 
   //====================
   // ESP-NOW setup
@@ -154,9 +148,7 @@ void loop() {
 
   controlSpeed();
 
-  //escUpper.writeMicroseconds(speedSetpointUpper * 1000 / 5676 + 1000);
-
-  delay(1);
+  delay(10);
 }
 
 //====================
@@ -172,12 +164,14 @@ void sendMessage() {
 //====================
 // measureSpeedUpper/Lower functions
 
+int maxCount = 14*5;
+
 int changeTime1 = 0;
 int changeCounter1 = 0;
 
 void measureSpeedUpper() {
   changeCounter1 = ++changeCounter1;
-  if (changeCounter1 >= 14) {
+  if (changeCounter1 >= maxCount) {
     int delta1 = micros() - changeTime1;
     changeTime1 = micros();
     speedUpper = changeCounter1 * 1000000.0 * 60.0 / delta1 / 14.0;
@@ -190,7 +184,7 @@ int changeCounter2 = 0;
 
 void measureSpeedLower() {
   changeCounter2 = ++changeCounter2;
-  if (changeCounter2 >= 14) {
+  if (changeCounter2 >= maxCount) {
     int delta2 = micros() - changeTime2;
     changeTime2 = micros();
     speedLower = changeCounter2 * 1000000.0 * 60.0 / delta2 / 14.0;
@@ -236,18 +230,20 @@ void checkConnectionTimeout() {
 //====================
 // controlSpeed function
 
-float maxTorqueFactor = 0.3;
-float Kp = 1 / 6000.0;
+float maxTorqueFactor = 0.1;
 
 void controlSpeed() {
 
-  float speedErrorUpper = speedSetpointUpper - speedUpper;
   float throttleMaxUpper = maxTorqueFactor + speedUpper / 5676.0;
-  float throttleUpper = constrain(Kp*speedErrorUpper, 0, throttleMaxUpper);
+  float throttleUpper = constrain(speedSetpointUpper / 5676.0, 0, throttleMaxUpper);
+  float throttleMaxLower = maxTorqueFactor + speedLower / 5676.0;
+  float throttleLower = constrain(speedSetpointLower / 5676.0, 0, throttleMaxLower);
 
   Serial.print(throttleUpper);
+  Serial.print(", ");
+  Serial.print(throttleLower);
   Serial.println(" ");
-    
+  
   escUpper.writeMicroseconds(throttleUpper * 1000 + 1000);
-  //escLower.writeMicroseconds(throttleLower * 1000 + 1000);
+  escLower.writeMicroseconds(throttleLower * 1000 + 1000);
 }
