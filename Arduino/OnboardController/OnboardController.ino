@@ -17,6 +17,9 @@ const int
 //====================
 // General variables/objects
 
+float wheelRadius = 2.5;
+float motorPoles = 4;
+
 int currentTime = 0;
 
 int speedSetpointUpper;
@@ -155,8 +158,8 @@ void loop() {
 // sendMessage function
 
 void sendMessage() {
-  messageToSend.value1 = speedUpper;
-  messageToSend.value2 = speedLower;
+  messageToSend.value1 = speedUpper * 0.00595 * wheelRadius;
+  messageToSend.value2 = speedLower * 0.00595 * wheelRadius;
 
   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &messageToSend, sizeof(messageToSend));
 }
@@ -164,7 +167,7 @@ void sendMessage() {
 //====================
 // measureSpeedUpper/Lower functions
 
-int maxCount = 14*5;
+int maxCount = motorPoles*5;
 
 int changeTime1 = 0;
 int changeCounter1 = 0;
@@ -174,7 +177,7 @@ void measureSpeedUpper() {
   if (changeCounter1 >= maxCount) {
     int delta1 = micros() - changeTime1;
     changeTime1 = micros();
-    speedUpper = changeCounter1 * 1000000.0 * 60.0 / delta1 / 14.0;
+    speedUpper = changeCounter1 * 1000000.0 * 60.0 / delta1 / motorPoles;
     changeCounter1 = 0;
   }
 }
@@ -187,7 +190,7 @@ void measureSpeedLower() {
   if (changeCounter2 >= maxCount) {
     int delta2 = micros() - changeTime2;
     changeTime2 = micros();
-    speedLower = changeCounter2 * 1000000.0 * 60.0 / delta2 / 14.0;
+    speedLower = changeCounter2 * 1000000.0 * 60.0 / delta2 / motorPoles;
     changeCounter2 = 0;
   }
 }

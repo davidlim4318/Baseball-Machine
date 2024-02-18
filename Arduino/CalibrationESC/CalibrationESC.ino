@@ -5,7 +5,7 @@
 // Pins
 
 const int
-  escPin[2] = { 2, 3 };
+  escPin[2] = { 2, 4 };
 
 //====================
 // General variables/objects
@@ -67,6 +67,7 @@ void loop() {
   int value = analogRead(A0);
   escUpper.writeMicroseconds(value * 1000 / 4095 + 1000);
   escLower.writeMicroseconds(value * 1000 / 4095 + 1000);
+  Serial.println(value);
   delay(10);
 }
 

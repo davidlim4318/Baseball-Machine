@@ -422,8 +422,8 @@ void displayAnimation2() {
 
 void displaySpeed() {
 
-  int speedUpperMph = speedUpper * 0.02826243707;
-  int speedLowerMph = speedLower * 0.02826243707;
+  int speedUpperMph = speedUpper;
+  int speedLowerMph = speedLower;
 
   uint8_t data[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
