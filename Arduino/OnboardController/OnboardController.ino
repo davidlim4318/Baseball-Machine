@@ -11,7 +11,8 @@
 
 const int
   escPin[2] = { 2, 11 },
-  hallSensorPin[2] = { 3, 12 };
+  hallSensorPin[2] = { 3, 12 },
+  batteryPin = A0
 ;
 
 //====================
@@ -28,10 +29,12 @@ int speedSetpointLower;
 int speedUpper;
 int speedLower;
 
+int batterySOC;
+
 int receiveTime = 0;
 int dataSize;
 
-boolean connectionTimeout = false;
+bool connectionTimeout = false;
 
 Servo escUpper;
 Servo escLower;
@@ -44,6 +47,9 @@ uint8_t broadcastAddress[] = { 0x48, 0x27, 0xE2, 0xFD, 0x6B, 0xA4};
 typedef struct struct_message_onboard {
   int value1;
   int value2;
+  int value3;
+  int value4;
+  int value5;
 } struct_message_onboard;
 
 struct_message_onboard messageToSend;
@@ -66,6 +72,11 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 typedef struct struct_message_remote {
   int value1;
   int value2;
+  int value3;
+  int value4;
+  bool value5;
+  bool value6;
+  int value7;
 } struct_message_remote;
 
 struct_message_remote messageToReceive;
@@ -134,6 +145,7 @@ void loop() {
   currentTime = millis();
 
   checkMeasureSpeedTimeout();
+  measureBattery();
 
   sendMessage();
   checkConnectionTimeout();
@@ -160,6 +172,7 @@ void loop() {
 void sendMessage() {
   messageToSend.value1 = speedUpper * 0.00595 * wheelRadius;
   messageToSend.value2 = speedLower * 0.00595 * wheelRadius;
+  messageToSend.value5 = batterySOC;
 
   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &messageToSend, sizeof(messageToSend));
 }
@@ -212,6 +225,17 @@ void checkMeasureSpeedTimeout() {
     changeCounter2 = 0;
   }
 }
+
+//====================
+// measureBattery function
+
+float voltage;
+
+void measureBattery() {
+  voltage = 0.005 * ( 3.1427 * analogRead(batteryPin) ) / 4095 / 0.225 + 0.995 * voltage;
+  batterySOC = 133.3 * (voltage - 12.65);
+}
+
 
 //====================
 // checkConnectionTimeout function
