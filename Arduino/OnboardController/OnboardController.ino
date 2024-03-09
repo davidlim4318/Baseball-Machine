@@ -1,5 +1,5 @@
 // Remote Controller Address: 48:27:E2:FD:6B:A4
-// Onboard Controller Address: EC:DA:3B:63:AF:EC
+// Onboard Controller Address: EC:DA:3B:55:1E:64
 
 #include <Arduino.h>
 #include <esp_now.h>
@@ -10,15 +10,15 @@
 // Pins
 
 const int
-  escPin[2] = { 2, 4 },
-  hallSensorPin[2] = { 10, 12 };
+  escPin[2] = { 2, 11 },
+  hallSensorPin[2] = { 3, 12 };
 ;
 
 //====================
 // General variables/objects
 
-float wheelRadius = 2.5;
-float motorPoles = 4;
+float wheelRadius = 10;  // 2.5
+float motorPoles = 14;   // 4
 
 int currentTime = 0;
 
@@ -88,9 +88,9 @@ void setup() {
   // General setup
 
   Serial.begin(9600);
-
-  pinMode(hallSensorPin[0],INPUT_PULLUP);
-  pinMode(hallSensorPin[1],INPUT_PULLUP);
+  
+  pinMode(hallSensorPin[0], INPUT_PULLUP);
+  pinMode(hallSensorPin[1], INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin[0]), measureSpeedUpper, CHANGE);
   attachInterrupt(digitalPinToInterrupt(hallSensorPin[1]), measureSpeedLower, CHANGE);
 

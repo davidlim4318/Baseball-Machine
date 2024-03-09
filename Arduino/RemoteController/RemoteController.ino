@@ -1,5 +1,5 @@
 // Remote Controller Address: 48:27:E2:FD:6B:A4
-// Onboard Controller Address: EC:DA:3B:63:AF:EC
+// Onboard Controller Address: EC:DA:3B:55:1E:64
 
 #include <Arduino.h>
 #include <esp_now.h>
@@ -45,7 +45,7 @@ TM1637TinyDisplay6 display(clkPin, dioPin);
 //====================
 // ESP-NOW definitions to send mesage
 
-uint8_t broadcastAddress[] = { 0xEC, 0xDA, 0x3B, 0x63, 0xAF, 0xEC };
+uint8_t broadcastAddress[] = { 0xEC, 0xDA, 0x3B, 0x55, 0x1E, 0x64 };
 
 typedef struct struct_message_remote {
   int value1;
