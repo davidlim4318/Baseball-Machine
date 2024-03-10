@@ -5,6 +5,7 @@
 #include <esp_now.h>
 #include <WiFi.h>
 #include <ESP32Servo.h>
+#include <AccelStepper.h>
 
 //====================
 // Pins
@@ -12,6 +13,9 @@
 const int
   escPin[2] = { 2, 11 },
   hallSensorPin[2] = { 3, 12 },
+  stepPin[2] = {A6, A2},
+  directionPin[2] = {A5, A1},
+  feedPin[2] = {9, 10},
   batteryPin = A0
 ;
 
@@ -26,6 +30,13 @@ int currentTime = 0;
 int speedSetpointUpper;
 int speedSetpointLower;
 
+int moveX;
+int moveY;
+bool moveAutoX;
+bool moveAutoY;
+
+int feed;
+
 int speedUpper;
 int speedLower;
 
@@ -38,6 +49,9 @@ bool connectionTimeout = false;
 
 Servo escUpper;
 Servo escLower;
+
+AccelStepper stepper1(1, stepPin[0], directionPin[0]);
+AccelStepper stepper2(1, stepPin[1], directionPin[1]);
 
 //====================
 // ESP-NOW definitions to send message
@@ -88,6 +102,11 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   dataSize = len;
   speedSetpointUpper = messageToReceive.value1;
   speedSetpointLower = messageToReceive.value2;
+  moveX = messageToReceive.value3;
+  moveY = messageToReceive.value4;
+  moveAutoX = messageToReceive.value5;
+  moveAutoY = messageToReceive.value6;
+  feed = messageToReceive.value7;
 }
 
 //====================
@@ -99,11 +118,6 @@ void setup() {
   // General setup
 
   Serial.begin(9600);
-  
-  pinMode(hallSensorPin[0], INPUT_PULLUP);
-  pinMode(hallSensorPin[1], INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(hallSensorPin[0]), measureSpeedUpper, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(hallSensorPin[1]), measureSpeedLower, CHANGE);
 
   analogReadResolution(12);
   analogWriteResolution(12);
@@ -113,6 +127,34 @@ void setup() {
 
   escUpper.attach(escPin[0]);
   escLower.attach(escPin[1]);
+
+  //====================
+  // Hall Sensor Setup
+
+  pinMode(hallSensorPin[0], INPUT_PULLUP);
+  pinMode(hallSensorPin[1], INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(hallSensorPin[0]), measureSpeedUpper, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(hallSensorPin[1]), measureSpeedLower, CHANGE);
+
+  //====================
+  // Stepper Setup
+
+  //pinMode(stepPin[0],OUTPUT);
+  //pinMode(stepPin[1],OUTPUT);
+  //pinMode(directionPin[0],OUTPUT);
+  //pinMode(directionPin[1],OUTPUT);
+
+  stepper1.setMaxSpeed(200);
+  stepper1.setAcceleration(100);
+
+  stepper2.setMaxSpeed(200);
+  stepper2.setAcceleration(100);
+
+  //====================
+  // Feeder Setup
+
+  pinMode(feedPin[0],OUTPUT);
+  pinMode(feedPin[1],OUTPUT);
 
   //====================
   // ESP-NOW setup
@@ -162,19 +204,9 @@ void loop() {
   Serial.print(", ");
 
   controlSpeed();
+  controlFeed();
 
   delay(10);
-}
-
-//====================
-// sendMessage function
-
-void sendMessage() {
-  messageToSend.value1 = speedUpper * 0.00595 * wheelRadius;
-  messageToSend.value2 = speedLower * 0.00595 * wheelRadius;
-  messageToSend.value5 = batterySOC;
-
-  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &messageToSend, sizeof(messageToSend));
 }
 
 //====================
@@ -236,6 +268,16 @@ void measureBattery() {
   batterySOC = 133.3 * (voltage - 12.65);
 }
 
+//====================
+// sendMessage function
+
+void sendMessage() {
+  messageToSend.value1 = speedUpper * 0.00595 * wheelRadius;
+  messageToSend.value2 = speedLower * 0.00595 * wheelRadius;
+  messageToSend.value5 = batterySOC;
+
+  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &messageToSend, sizeof(messageToSend));
+}
 
 //====================
 // checkConnectionTimeout function
@@ -248,6 +290,11 @@ void checkConnectionTimeout() {
     dataSize = 0;
     speedSetpointUpper = 0;
     speedSetpointLower = 0;
+    moveX = 0;
+    moveY = 0;
+    moveAutoX = false;
+    moveAutoY = false;
+    feed = 0;
   }
   else {
     connectionTimeout = false;
@@ -273,4 +320,22 @@ void controlSpeed() {
   
   escUpper.writeMicroseconds(throttleUpper * 1000 + 1000);
   escLower.writeMicroseconds(throttleLower * 1000 + 1000);
+}
+
+//====================
+// controlFeed function
+
+void controlFeed() {
+  if (feed == -1) {
+    digitalWrite(feedPin[0], LOW);
+    digitalWrite(feedPin[1], HIGH);
+  }
+  else if (feed == 1) {
+    digitalWrite(feedPin[0], HIGH);
+    digitalWrite(feedPin[1], LOW);
+  }
+  else {
+    digitalWrite(feedPin[0], LOW);
+    digitalWrite(feedPin[1], LOW);
+  }
 }

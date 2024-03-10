@@ -36,6 +36,8 @@ int moveY;
 bool moveAutoX;
 bool moveAutoY;
 
+int feed;
+
 int speedUpper;
 int speedLower;
 
@@ -337,14 +339,17 @@ void checkButtonY() {
 int enableDelay = 1000;
 
 void checkFeedButton() {
-  int feedForward = digitalRead(buttonPin[6]);
-  if (feedForward == LOW) {
-    Serial.println("Feeding forward");
-    moveCommand = true;
-  }
+  feed = 0;
   int feedReverse = digitalRead(buttonPin[7]);
+  int feedForward = digitalRead(buttonPin[6]);
   if (feedReverse == LOW) {
     Serial.println("Feeding reverse");
+    feed = -1;
+    moveCommand = true;
+  }
+  else if (feedForward == LOW) {
+    Serial.println("Feeding forward");
+    feed = 1;
     moveCommand = true;
   }
 }
@@ -387,6 +392,9 @@ void sendMessage() {
   messageToSend.value2 = speedSetpointLower;
   messageToSend.value3 = moveX;
   messageToSend.value4 = moveY;
+  messageToSend.value5 = moveAutoX;
+  messageToSend.value6 = moveAutoY;
+  messageToSend.value7 = feed;
 
   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &messageToSend, sizeof(messageToSend));
 }
