@@ -31,8 +31,8 @@ bool saveCommand = false;
 int speedSetpointUpper;
 int speedSetpointLower;
 
-int moveX;
-int moveY;
+int moveCommandX;
+int moveCommandY;
 bool moveAutoX;
 bool moveAutoY;
 
@@ -247,10 +247,11 @@ void checkButtonX() {
     if (abs(joystickXValue) > deadBand) {
       Serial.print("Holding joystick X at ");
       Serial.println(joystickXValue);
-      moveX = joystickXValue;
+      moveCommandX = joystickXValue;
       moveCommand = true;
     }
     else {
+      moveCommandX = 0;
       // Check for pressed button
       for (byte i = 0; i < 3; i++) {
         if (digitalRead(buttonPin[i]) == LOW) {
@@ -296,10 +297,11 @@ void checkButtonY() {
     if (abs(joystickYValue) > deadBand) {
       Serial.print("Holding joystick Y at ");
       Serial.println(joystickYValue);
-      moveY = joystickYValue;
+      moveCommandY = joystickYValue;
       moveCommand = true;
     }
     else {
+      moveCommandY = 0;
       // Check for pressed button
       for (byte i = 3; i < 6; i++) {
         if (digitalRead(buttonPin[i]) == LOW) {
@@ -390,8 +392,8 @@ void displayStatus() {
 void sendMessage() {
   messageToSend.value1 = speedSetpointUpper;
   messageToSend.value2 = speedSetpointLower;
-  messageToSend.value3 = moveX;
-  messageToSend.value4 = moveY;
+  messageToSend.value3 = moveCommandX;
+  messageToSend.value4 = moveCommandY;
   messageToSend.value5 = moveAutoX;
   messageToSend.value6 = moveAutoY;
   messageToSend.value7 = feed;

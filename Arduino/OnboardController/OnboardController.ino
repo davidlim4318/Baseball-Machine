@@ -22,16 +22,24 @@ const int
 //====================
 // General variables/objects
 
-float wheelRadius = 10;  // 2.5
+float wheelRadius = 4.875;  // 2.5
 float motorPoles = 14;   // 4
+
+int gearboxX = 20;
+int gearboxY = 40;
+
+int speedMaxX = 10;
+int speedMaxY = 10;
+
+int accelerationTime = 3;
 
 int currentTime = 0;
 
 int speedSetpointUpper;
 int speedSetpointLower;
 
-int moveX;
-int moveY;
+int moveCommandX;
+int moveCommandY;
 bool moveAutoX;
 bool moveAutoY;
 
@@ -50,8 +58,8 @@ bool connectionTimeout = false;
 Servo escUpper;
 Servo escLower;
 
-AccelStepper stepper1(1, stepPin[0], directionPin[0]);
-AccelStepper stepper2(1, stepPin[1], directionPin[1]);
+AccelStepper stepperX(1, stepPin[0], directionPin[0]);
+AccelStepper stepperY(1, stepPin[1], directionPin[1]);
 
 //====================
 // ESP-NOW definitions to send message
@@ -102,8 +110,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   dataSize = len;
   speedSetpointUpper = messageToReceive.value1;
   speedSetpointLower = messageToReceive.value2;
-  moveX = messageToReceive.value3;
-  moveY = messageToReceive.value4;
+  moveCommandX = messageToReceive.value3;
+  moveCommandY = messageToReceive.value4;
   moveAutoX = messageToReceive.value5;
   moveAutoY = messageToReceive.value6;
   feed = messageToReceive.value7;
@@ -139,16 +147,13 @@ void setup() {
   //====================
   // Stepper Setup
 
-  //pinMode(stepPin[0],OUTPUT);
+  pinMode(stepPin[0],OUTPUT);
   //pinMode(stepPin[1],OUTPUT);
-  //pinMode(directionPin[0],OUTPUT);
+  pinMode(directionPin[0],OUTPUT);
   //pinMode(directionPin[1],OUTPUT);
 
-  stepper1.setMaxSpeed(200);
-  stepper1.setAcceleration(100);
-
-  stepper2.setMaxSpeed(200);
-  stepper2.setAcceleration(100);
+  stepperX.setAcceleration(speedMaxX * gearboxX * 200 / 60.0 / accelerationTime);
+  stepperY.setAcceleration(speedMaxY * gearboxY * 200 / 60.0 / accelerationTime);
 
   //====================
   // Feeder Setup
@@ -202,10 +207,18 @@ void loop() {
   Serial.print(", ");
   Serial.print(speedLower);
   Serial.print(", ");
+  Serial.print(moveCommandX);
+  Serial.print(", ");
+  Serial.print(moveCommandY);
+  Serial.print(", ");
   Serial.print(feed);
   Serial.print(", ");
 
   controlSpeed();
+
+  moveX();
+  moveY();
+
   controlFeed();
 
   delay(10);
@@ -214,7 +227,7 @@ void loop() {
 //====================
 // measureSpeedUpper/Lower functions
 
-int maxCount = motorPoles*5;
+int maxCount = motorPoles*10;
 
 int changeTime1 = 0;
 int changeCounter1 = 0;
@@ -266,7 +279,7 @@ void checkMeasureSpeedTimeout() {
 float voltage;
 
 void measureBattery() {
-  voltage = 0.005 * ( 3.1427 * analogRead(batteryPin) ) / 4095 / 0.225 + 0.995 * voltage;
+  voltage = 0.005 * ( 3.2 * analogRead(batteryPin) ) / 4095 / 0.225 + 0.995 * voltage;
   batterySOC = 133.3 * (voltage - 12.65);
 }
 
@@ -292,8 +305,8 @@ void checkConnectionTimeout() {
     dataSize = 0;
     speedSetpointUpper = 0;
     speedSetpointLower = 0;
-    moveX = 0;
-    moveY = 0;
+    moveCommandX = 0;
+    moveCommandY = 0;
     moveAutoX = false;
     moveAutoY = false;
     feed = 0;
@@ -322,6 +335,28 @@ void controlSpeed() {
   
   escUpper.writeMicroseconds(throttleUpper * 1000 + 1000);
   escLower.writeMicroseconds(throttleLower * 1000 + 1000);
+}
+
+//====================
+// moveX function
+
+void moveX() {
+  if (moveAutoX) {
+
+  }
+  else {
+    float speedX = speedMaxX * moveCommandX * gearboxX * 2 * 200 / 4095.0 / 60.0;
+    stepperX.setMaxSpeed(speedX);
+    stepperX.moveTo(stepperX.currentPosition() + 1000000 * moveCommandX);
+    stepperX.run();
+  }
+}
+
+//====================
+// moveY function
+
+void moveY() {
+
 }
 
 //====================
