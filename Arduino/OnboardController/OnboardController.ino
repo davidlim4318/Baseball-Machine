@@ -48,6 +48,9 @@ int feed;
 int speedUpper;
 int speedLower;
 
+int positionX;
+int positionY;
+
 int batterySOC;
 
 int receiveTime = 0;
@@ -192,6 +195,8 @@ void loop() {
   currentTime = millis();
 
   checkMeasureSpeedTimeout();
+  positionX = stepperX.currentPosition();
+  positionY = stepperY.currentPosition();
   measureBattery();
 
   sendMessage();
@@ -209,7 +214,11 @@ void loop() {
   Serial.print(", ");
   Serial.print(moveCommandX);
   Serial.print(", ");
+  Serial.print(moveAutoX);
+  Serial.print(", ");
   Serial.print(moveCommandY);
+  Serial.print(", ");
+  Serial.print(moveAutoY);
   Serial.print(", ");
   Serial.print(feed);
   Serial.print(", ");
@@ -289,6 +298,8 @@ void measureBattery() {
 void sendMessage() {
   messageToSend.value1 = speedUpper * 0.00595 * wheelRadius;
   messageToSend.value2 = speedLower * 0.00595 * wheelRadius;
+  messageToSend.value3 = positionX;
+  messageToSend.value4 = positionY;
   messageToSend.value5 = batterySOC;
 
   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &messageToSend, sizeof(messageToSend));

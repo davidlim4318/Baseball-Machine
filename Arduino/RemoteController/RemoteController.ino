@@ -36,10 +36,15 @@ int moveCommandY;
 bool moveAutoX;
 bool moveAutoY;
 
+int savedPosition[3];
+
 int feed;
 
 int speedUpper;
 int speedLower;
+
+int positionX;
+int positionY;
 
 int batterySOC;
 
@@ -100,6 +105,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   dataSize = len;
   speedUpper = messageToReceive.value1;
   speedLower = messageToReceive.value2;
+  positionX = messageToReceive.value3;
+  positionY = messageToReceive.value4;
   batterySOC = messageToReceive.value5;
 }
 
@@ -269,17 +276,25 @@ void checkButtonX() {
     if (currentButtonX == LOW && currentTime - startTimeX > holdDelay) {
       holdingX = true;
       holdTimeX = currentTime;
+      moveAutoX = true;
+      moveCommandX = savedPosition[pressedX];
       Serial.print("Holding button ");
-      Serial.println(pressedX);
+      Serial.print(pressedX);
+      Serial.print(", moving to ");
+      Serial.println(savedPosition[pressedX]);
       moveCommand = true;
     }
     // If released
     else if (currentButtonX == HIGH) {
       if (!holdingX && currentTime - holdTimeX > debounceDelay) {
+        savedPosition[pressedX] = positionX;
         Serial.print("Released button ");
-        Serial.println(pressedX);
+        Serial.print(pressedX);
+        Serial.print(", saved position ");
+        Serial.println(savedPosition[pressedX]);
         saveCommand = true;
       }
+      moveAutoX = false;
       pressedX = -1;
     }
   }
@@ -319,17 +334,25 @@ void checkButtonY() {
     if (currentButtonY == LOW && currentTime - startTimeY > holdDelay) {
       holdingY = true;
       holdTimeY = currentTime;
+      moveAutoY = true;
+      moveCommandY = savedPosition[pressedY];
       Serial.print("Holding button ");
-      Serial.println(pressedY);
+      Serial.print(pressedY);
+      Serial.print(", moving to ");
+      Serial.println(savedPosition[pressedY]);
       moveCommand = true;
     }
     // If released
     else if (currentButtonY == HIGH) {
       if (!holdingY && currentTime - holdTimeY > debounceDelay) {
+        savedPosition[pressedY] = positionY;
         Serial.print("Released button ");
-        Serial.println(pressedY);
+        Serial.print(pressedY);
+        Serial.print(", saved position ");
+        Serial.println(savedPosition[pressedY]);
         saveCommand = true;
       }
+      moveAutoY = false;
       pressedY = -1;
     }
   }
