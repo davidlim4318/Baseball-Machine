@@ -1,5 +1,5 @@
 // Remote Controller Address: 48:27:E2:FD:6B:A4
-// Onboard Controller Address: EC:DA:3B:63:AF:EC
+// Onboard Controller Address: EC:DA:3B:55:1E:64
 
 #include <Arduino.h>
 #include <esp_now.h>
@@ -24,32 +24,46 @@ const int
 
 int currentTime = 0;
 
-boolean errorCondition = false;
-boolean moveCommand = false;
-boolean saveCommand = false;
+bool errorCondition = false;
+bool moveCommand = false;
+bool saveCommand = false;
 
 int speedSetpointUpper;
 int speedSetpointLower;
 
+int moveX;
+int moveY;
+bool moveAutoX;
+bool moveAutoY;
+
+int feed;
+
 int speedUpper;
 int speedLower;
+
+int batterySOC;
 
 int receiveTime = 0;
 int dataSize;
 
-boolean connectionTimeout = false;
-boolean knobReset = false;
+bool connectionTimeout = false;
+bool knobReset = false;
 
 TM1637TinyDisplay6 display(clkPin, dioPin);
 
 //====================
 // ESP-NOW definitions to send mesage
 
-uint8_t broadcastAddress[] = { 0xEC, 0xDA, 0x3B, 0x63, 0xAF, 0xEC };
+uint8_t broadcastAddress[] = { 0xEC, 0xDA, 0x3B, 0x55, 0x1E, 0x64 };
 
 typedef struct struct_message_remote {
   int value1;
   int value2;
+  int value3;
+  int value4;
+  bool value5;
+  bool value6;
+  int value7;
 } struct_message_remote;
 
 struct_message_remote messageToSend;
@@ -72,6 +86,9 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 typedef struct struct_message_onboard {
   int value1;
   int value2;
+  int value3;
+  int value4;
+  int value5;
 } struct_message_onboard;
 
 struct_message_onboard messageToReceive;
@@ -83,6 +100,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   dataSize = len;
   speedUpper = messageToReceive.value1;
   speedLower = messageToReceive.value2;
+  batterySOC = messageToReceive.value5;
 }
 
 //====================
@@ -184,7 +202,8 @@ void loop() {
   else {
     displaySpeed();
   }
-  //displayBattery(16);
+
+  displayBattery(batterySOC);
   
   delay(10);
 }
@@ -218,7 +237,7 @@ int deadBand = 205;
 int startTimeX = 0;
 int holdTimeX = 0;
 int pressedX = -1;
-boolean holdingX = false;
+bool holdingX = false;
 
 void checkButtonX() {
   if (pressedX == -1) {
@@ -228,6 +247,7 @@ void checkButtonX() {
     if (abs(joystickXValue) > deadBand) {
       Serial.print("Holding joystick X at ");
       Serial.println(joystickXValue);
+      moveX = joystickXValue;
       moveCommand = true;
     }
     else {
@@ -267,7 +287,7 @@ void checkButtonX() {
 int startTimeY = 0;
 int holdTimeY = 0;
 int pressedY = -1;
-boolean holdingY = false;
+bool holdingY = false;
 
 void checkButtonY() {
   if (pressedY == -1) {
@@ -276,6 +296,7 @@ void checkButtonY() {
     if (abs(joystickYValue) > deadBand) {
       Serial.print("Holding joystick Y at ");
       Serial.println(joystickYValue);
+      moveY = joystickYValue;
       moveCommand = true;
     }
     else {
@@ -318,14 +339,17 @@ void checkButtonY() {
 int enableDelay = 1000;
 
 void checkFeedButton() {
-  int feedForward = digitalRead(buttonPin[6]);
-  if (feedForward == LOW) {
-    Serial.println("Feeding forward");
-    moveCommand = true;
-  }
+  feed = 0;
   int feedReverse = digitalRead(buttonPin[7]);
+  int feedForward = digitalRead(buttonPin[6]);
   if (feedReverse == LOW) {
     Serial.println("Feeding reverse");
+    feed = -1;
+    moveCommand = true;
+  }
+  else if (feedForward == LOW) {
+    Serial.println("Feeding forward");
+    feed = 1;
     moveCommand = true;
   }
 }
@@ -366,6 +390,11 @@ void displayStatus() {
 void sendMessage() {
   messageToSend.value1 = speedSetpointUpper;
   messageToSend.value2 = speedSetpointLower;
+  messageToSend.value3 = moveX;
+  messageToSend.value4 = moveY;
+  messageToSend.value5 = moveAutoX;
+  messageToSend.value6 = moveAutoY;
+  messageToSend.value7 = feed;
 
   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &messageToSend, sizeof(messageToSend));
 }
@@ -382,6 +411,7 @@ void checkConnectionTimeout() {
     dataSize = 0;
     speedUpper = 0;
     speedLower = 0;
+    batterySOC = 0;
   }
   else {
     connectionTimeout = false;
@@ -449,22 +479,23 @@ void displaySpeed() {
 // displayBattery function
 
 void displayBattery(int batteryLevel) {
-  batteryLevel = constrain(batteryLevel,0,99);
   if (batteryLevel >= 66) {
     digitalWrite(ledPin[4], HIGH);
     digitalWrite(ledPin[3], HIGH);
-    analogWrite(ledPin[2], 4095 * (batteryLevel - 66) / 33);
+    digitalWrite(ledPin[2],HIGH);
   }
   else if (batteryLevel >= 33) {
     digitalWrite(ledPin[4], HIGH);
-    analogWrite(ledPin[3], 4095 * (batteryLevel - 33) / 33);
+    digitalWrite(ledPin[3], HIGH);
+    digitalWrite(ledPin[2], LOW);
+  }
+  else if (batteryLevel > 0) {
+    digitalWrite(ledPin[4], HIGH);
+    digitalWrite(ledPin[3], LOW);
     digitalWrite(ledPin[2], LOW);
   }
   else {
-    analogWrite(ledPin[4], 4095 * batteryLevel / 33);
-    if (batteryLevel == 0) {
-      digitalWrite(ledPin[4], LOW);
-    }
+    digitalWrite(ledPin[4], LOW);
     digitalWrite(ledPin[3], LOW);
     digitalWrite(ledPin[2], LOW);
   }
