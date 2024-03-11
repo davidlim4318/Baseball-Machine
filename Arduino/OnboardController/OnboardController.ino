@@ -1,5 +1,5 @@
 // Remote Controller Address: 48:27:E2:FD:6B:A4
-// Onboard Controller Address: EC:DA:3B:55:1E:64
+// Onboard Controller Address: EC:DA:3B:60:D6:18
 
 #include <Arduino.h>
 #include <esp_now.h>
@@ -201,6 +201,8 @@ void loop() {
   Serial.print(speedSetpointLower);
   Serial.print(", ");
   Serial.print(speedLower);
+  Serial.print(", ");
+  Serial.print(feed);
   Serial.print(", ");
 
   controlSpeed();
