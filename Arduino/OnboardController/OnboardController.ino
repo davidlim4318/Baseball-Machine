@@ -31,6 +31,9 @@ int gearboxY = 40;
 int speedMaxX = 10;
 int speedMaxY = 10;
 
+float stepSpeedMaxX = speedMaxX * gearboxX * 200 / 60.0;
+float stepSpeedMaxY = speedMaxY * gearboxY * 200 / 60.0;
+
 int accelerationTime = 3;
 
 int currentTime = 0;
@@ -155,8 +158,8 @@ void setup() {
   pinMode(directionPin[0],OUTPUT);
   //pinMode(directionPin[1],OUTPUT);
 
-  stepperX.setAcceleration(speedMaxX * gearboxX * 200 / 60.0 / accelerationTime);
-  stepperY.setAcceleration(speedMaxY * gearboxY * 200 / 60.0 / accelerationTime);
+  stepperX.setAcceleration(stepSpeedMaxX / accelerationTime);
+  stepperY.setAcceleration(stepSpeedMaxY / accelerationTime);
 
   //====================
   // Feeder Setup
@@ -219,6 +222,10 @@ void loop() {
   Serial.print(moveCommandY);
   Serial.print(", ");
   Serial.print(moveAutoY);
+  Serial.print(", ");
+  Serial.print(positionX);
+  Serial.print(", ");
+  Serial.print(positionY);
   Serial.print(", ");
   Serial.print(feed);
   Serial.print(", ");
@@ -353,11 +360,12 @@ void controlSpeed() {
 
 void moveX() {
   if (moveAutoX) {
-
+    stepperX.setMaxSpeed(stepSpeedMaxX);
+    stepperX.moveTo(moveCommandX);
+    stepperX.run();
   }
   else {
-    float speedX = speedMaxX * moveCommandX * gearboxX * 2 * 200 / 4095.0 / 60.0;
-    stepperX.setMaxSpeed(speedX);
+    stepperX.setMaxSpeed(stepSpeedMaxX * moveCommandX * 2  / 4095.0);
     stepperX.moveTo(stepperX.currentPosition() + 1000000 * moveCommandX);
     stepperX.run();
   }
