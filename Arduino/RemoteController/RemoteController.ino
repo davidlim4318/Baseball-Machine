@@ -36,7 +36,7 @@ int moveCommandY;
 bool moveAutoX;
 bool moveAutoY;
 
-int savedPosition[3];
+int savedPosition[6];
 
 int feed;
 

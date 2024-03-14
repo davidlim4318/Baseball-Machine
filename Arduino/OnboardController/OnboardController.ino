@@ -154,9 +154,9 @@ void setup() {
   // Stepper Setup
 
   pinMode(stepPin[0],OUTPUT);
-  //pinMode(stepPin[1],OUTPUT);
+  pinMode(stepPin[1],OUTPUT);
   pinMode(directionPin[0],OUTPUT);
-  //pinMode(directionPin[1],OUTPUT);
+  pinMode(directionPin[1],OUTPUT);
 
   stepperX.setAcceleration(stepSpeedMaxX / accelerationTime);
   stepperY.setAcceleration(stepSpeedMaxY / accelerationTime);
@@ -375,7 +375,16 @@ void moveX() {
 // moveY function
 
 void moveY() {
-
+  if (moveAutoY) {
+    stepperY.setMaxSpeed(stepSpeedMaxY);
+    stepperY.moveTo(moveCommandY);
+    stepperY.run();
+  }
+  else {
+    stepperY.setMaxSpeed(stepSpeedMaxY * moveCommandY * 2  / 4095.0);
+    stepperY.moveTo(stepperY.currentPosition() + 1000000 * moveCommandY);
+    stepperY.run();
+  }
 }
 
 //====================
