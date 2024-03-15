@@ -1,5 +1,5 @@
 // Remote Controller Address: 48:27:E2:FD:6B:A4
-// Onboard Controller Address: EC:DA:3B:60:D6:18
+// Onboard Controller Address: EC:DA:3B:60:D1:98
 
 #include <Arduino.h>
 #include <esp_now.h>
@@ -59,7 +59,7 @@ TM1637TinyDisplay6 display(clkPin, dioPin);
 //====================
 // ESP-NOW definitions to send mesage
 
-uint8_t broadcastAddress[] = { 0xEC, 0xDA, 0x3B, 0x60, 0xD6, 0x18 };
+uint8_t broadcastAddress[] = { 0xEC, 0xDA, 0x3B, 0x60, 0xD1, 0x98 };
 
 typedef struct struct_message_remote {
   int value1;
@@ -211,6 +211,7 @@ void loop() {
   }
 
   displayBattery(batterySOC);
+  //Serial.println(batterySOC);
   
   delay(10);
 }
@@ -427,7 +428,7 @@ void sendMessage() {
 //====================
 // checkConnectionTimeout function
 
-int connectionTimeoutDelay = 100;
+int connectionTimeoutDelay = 1000;
 
 void checkConnectionTimeout() {
   if (currentTime - receiveTime > connectionTimeoutDelay) {
