@@ -1,5 +1,5 @@
 // Remote Controller Address: 48:27:E2:FD:6B:A4
-// Onboard Controller Address: EC:DA:3B:55:1E:64
+// Onboard Controller Address: EC:DA:3B:60:D6:18
 
 #include <Arduino.h>
 #include <esp_now.h>
@@ -22,16 +22,27 @@ const int
 //====================
 // General variables/objects
 
-float wheelRadius = 10;  // 2.5
+float wheelRadius = 4.875;  // 2.5
 float motorPoles = 14;   // 4
+
+int gearboxX = 20;
+int gearboxY = 40;
+
+int speedMaxX = 10;
+int speedMaxY = 10;
+
+float stepSpeedMaxX = speedMaxX * gearboxX * 200 / 60.0;
+float stepSpeedMaxY = speedMaxY * gearboxY * 200 / 60.0;
+
+int accelerationTime = 3;
 
 int currentTime = 0;
 
 int speedSetpointUpper;
 int speedSetpointLower;
 
-int moveX;
-int moveY;
+int moveCommandX;
+int moveCommandY;
 bool moveAutoX;
 bool moveAutoY;
 
@@ -39,6 +50,9 @@ int feed;
 
 int speedUpper;
 int speedLower;
+
+int positionX;
+int positionY;
 
 int batterySOC;
 
@@ -50,8 +64,8 @@ bool connectionTimeout = false;
 Servo escUpper;
 Servo escLower;
 
-AccelStepper stepper1(1, stepPin[0], directionPin[0]);
-AccelStepper stepper2(1, stepPin[1], directionPin[1]);
+AccelStepper stepperX(1, stepPin[0], directionPin[0]);
+AccelStepper stepperY(1, stepPin[1], directionPin[1]);
 
 //====================
 // ESP-NOW definitions to send message
@@ -102,8 +116,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   dataSize = len;
   speedSetpointUpper = messageToReceive.value1;
   speedSetpointLower = messageToReceive.value2;
-  moveX = messageToReceive.value3;
-  moveY = messageToReceive.value4;
+  moveCommandX = messageToReceive.value3;
+  moveCommandY = messageToReceive.value4;
   moveAutoX = messageToReceive.value5;
   moveAutoY = messageToReceive.value6;
   feed = messageToReceive.value7;
@@ -139,16 +153,13 @@ void setup() {
   //====================
   // Stepper Setup
 
-  //pinMode(stepPin[0],OUTPUT);
-  //pinMode(stepPin[1],OUTPUT);
-  //pinMode(directionPin[0],OUTPUT);
-  //pinMode(directionPin[1],OUTPUT);
+  pinMode(stepPin[0],OUTPUT);
+  pinMode(stepPin[1],OUTPUT);
+  pinMode(directionPin[0],OUTPUT);
+  pinMode(directionPin[1],OUTPUT);
 
-  stepper1.setMaxSpeed(200);
-  stepper1.setAcceleration(100);
-
-  stepper2.setMaxSpeed(200);
-  stepper2.setAcceleration(100);
+  stepperX.setAcceleration(stepSpeedMaxX / accelerationTime);
+  stepperY.setAcceleration(stepSpeedMaxY / accelerationTime);
 
   //====================
   // Feeder Setup
@@ -187,6 +198,8 @@ void loop() {
   currentTime = millis();
 
   checkMeasureSpeedTimeout();
+  positionX = stepperX.currentPosition();
+  positionY = stepperY.currentPosition();
   measureBattery();
 
   sendMessage();
@@ -202,8 +215,26 @@ void loop() {
   Serial.print(", ");
   Serial.print(speedLower);
   Serial.print(", ");
+  Serial.print(moveCommandX);
+  Serial.print(", ");
+  Serial.print(moveAutoX);
+  Serial.print(", ");
+  Serial.print(moveCommandY);
+  Serial.print(", ");
+  Serial.print(moveAutoY);
+  Serial.print(", ");
+  Serial.print(positionX);
+  Serial.print(", ");
+  Serial.print(positionY);
+  Serial.print(", ");
+  Serial.print(feed);
+  Serial.print(", ");
 
   controlSpeed();
+
+  moveX();
+  moveY();
+
   controlFeed();
 
   delay(10);
@@ -212,7 +243,7 @@ void loop() {
 //====================
 // measureSpeedUpper/Lower functions
 
-int maxCount = motorPoles*5;
+int maxCount = motorPoles*10;
 
 int changeTime1 = 0;
 int changeCounter1 = 0;
@@ -264,7 +295,7 @@ void checkMeasureSpeedTimeout() {
 float voltage;
 
 void measureBattery() {
-  voltage = 0.005 * ( 3.1427 * analogRead(batteryPin) ) / 4095 / 0.225 + 0.995 * voltage;
+  voltage = 0.005 * ( 3.2 * analogRead(batteryPin) ) / 4095 / 0.225 + 0.995 * voltage;
   batterySOC = 133.3 * (voltage - 12.65);
 }
 
@@ -274,6 +305,8 @@ void measureBattery() {
 void sendMessage() {
   messageToSend.value1 = speedUpper * 0.00595 * wheelRadius;
   messageToSend.value2 = speedLower * 0.00595 * wheelRadius;
+  messageToSend.value3 = positionX;
+  messageToSend.value4 = positionY;
   messageToSend.value5 = batterySOC;
 
   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &messageToSend, sizeof(messageToSend));
@@ -290,8 +323,8 @@ void checkConnectionTimeout() {
     dataSize = 0;
     speedSetpointUpper = 0;
     speedSetpointLower = 0;
-    moveX = 0;
-    moveY = 0;
+    moveCommandX = 0;
+    moveCommandY = 0;
     moveAutoX = false;
     moveAutoY = false;
     feed = 0;
@@ -320,6 +353,38 @@ void controlSpeed() {
   
   escUpper.writeMicroseconds(throttleUpper * 1000 + 1000);
   escLower.writeMicroseconds(throttleLower * 1000 + 1000);
+}
+
+//====================
+// moveX function
+
+void moveX() {
+  if (moveAutoX) {
+    stepperX.setMaxSpeed(stepSpeedMaxX);
+    stepperX.moveTo(moveCommandX);
+    stepperX.run();
+  }
+  else {
+    stepperX.setMaxSpeed(stepSpeedMaxX * moveCommandX * 2  / 4095.0);
+    stepperX.moveTo(stepperX.currentPosition() + 1000000 * moveCommandX);
+    stepperX.run();
+  }
+}
+
+//====================
+// moveY function
+
+void moveY() {
+  if (moveAutoY) {
+    stepperY.setMaxSpeed(stepSpeedMaxY);
+    stepperY.moveTo(moveCommandY);
+    stepperY.run();
+  }
+  else {
+    stepperY.setMaxSpeed(stepSpeedMaxY * moveCommandY * 2  / 4095.0);
+    stepperY.moveTo(stepperY.currentPosition() + 1000000 * moveCommandY);
+    stepperY.run();
+  }
 }
 
 //====================
