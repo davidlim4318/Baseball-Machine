@@ -25,11 +25,11 @@ const int
 float wheelRadius = 4.875;  // 2.5
 float motorPoles = 14;   // 4
 
-int gearboxX = 20;
-int gearboxY = 40;
+int gearboxX = 40;
+int gearboxY = 20;
 
-int speedMaxX = 10;
-int speedMaxY = 10;
+int speedMaxX = 2;
+int speedMaxY = 2;
 
 float stepSpeedMaxX = speedMaxX * gearboxX * 200 / 60.0;
 float stepSpeedMaxY = speedMaxY * gearboxY * 200 / 60.0;
