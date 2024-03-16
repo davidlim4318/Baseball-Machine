@@ -49,8 +49,13 @@ bool moveAutoY;
 
 int feed;
 
-int speedUpper;
-int speedLower;
+float speedUpperMeasured;
+float speedLowerMeasured;
+
+float alpha = 0.006;
+
+float speedUpper;
+float speedLower;
 
 int positionX;
 int positionY;
@@ -201,6 +206,9 @@ void loop() {
 
     currentTime = millis();
 
+    speedUpper = alpha * speedUpperMeasured + (1 - alpha) * speedUpper;
+    speedLower = alpha * speedLowerMeasured + (1 - alpha) * speedLower;
+
     checkMeasureSpeedTimeout();
 
     positionX = stepperX.currentPosition();
@@ -237,7 +245,7 @@ void measureSpeedUpper() {
   if (changeCounter1 >= maxCount) {
     int delta1 = micros() - changeTime1;
     changeTime1 = micros();
-    speedUpper = changeCounter1 * 1000000.0 * 60.0 / delta1 / motorPoles;
+    speedUpperMeasured = changeCounter1 * 1000000.0 * 60.0 / delta1 / motorPoles;
     changeCounter1 = 0;
   }
 }
@@ -250,7 +258,7 @@ void measureSpeedLower() {
   if (changeCounter2 >= maxCount) {
     int delta2 = micros() - changeTime2;
     changeTime2 = micros();
-    speedLower = changeCounter2 * 1000000.0 * 60.0 / delta2 / motorPoles;
+    speedLowerMeasured = changeCounter2 * 1000000.0 * 60.0 / delta2 / motorPoles;
     changeCounter2 = 0;
   }
 }
