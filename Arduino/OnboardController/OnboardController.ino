@@ -227,7 +227,7 @@ void loop() {
 //====================
 // measureSpeedUpper/Lower functions
 
-int maxCount = motorPoles*10;
+int maxCount = motorPoles*5;
 
 int changeTime1 = 0;
 int changeCounter1 = 0;
@@ -321,7 +321,7 @@ void checkConnectionTimeout() {
 //====================
 // controlSpeed function
 
-float maxTorqueFactor = 0.1;
+float maxTorqueFactor = 1;
 
 float throttleUpper;
 float throttleLower;
