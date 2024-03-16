@@ -476,7 +476,7 @@ void displayAnimation2() {
 //====================
 // displaySpeed function
 
-float alpha = 0.05;
+float alpha = 0.01;
 
 float speedUpperFiltered;
 float speedLowerFiltered;

@@ -227,7 +227,7 @@ void loop() {
 //====================
 // measureSpeedUpper/Lower functions
 
-int maxCount = motorPoles;
+int maxCount = motorPoles*5;
 
 int changeTime1 = 0;
 int changeCounter1 = 0;
