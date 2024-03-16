@@ -476,10 +476,18 @@ void displayAnimation2() {
 //====================
 // displaySpeed function
 
+float alpha = 0.05;
+
+float speedUpperFiltered;
+float speedLowerFiltered;
+
 void displaySpeed() {
 
-  int speedUpperMph = speedUpper;
-  int speedLowerMph = speedLower;
+  speedUpperFiltered = alpha * speedUpper + (1 - alpha) * speedUpperFiltered;
+  speedLowerFiltered = alpha * speedLower + (1 - alpha) * speedLowerFiltered;
+
+  int speedUpperMph = speedUpperFiltered;
+  int speedLowerMph = speedLowerFiltered;
 
   uint8_t data[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
