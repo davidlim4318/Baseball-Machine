@@ -28,8 +28,8 @@ float motorPoles = 14;   // 4
 int gearboxX = 40;
 int gearboxY = 20;
 
-int speedMaxX = 2;
-int speedMaxY = 2;
+int speedMaxX = 3;
+int speedMaxY = 3;
 
 float stepSpeedMaxX = speedMaxX * gearboxX * 200 / 60.0;
 float stepSpeedMaxY = speedMaxY * gearboxY * 200 / 60.0;
