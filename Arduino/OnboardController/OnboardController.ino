@@ -11,8 +11,8 @@
 // Pins
 
 const int
-  escPin[2] = { 2, 11 },
-  hallSensorPin[2] = { 3, 12 },
+  escPin[2] = { 11, 2 },
+  hallSensorPin[2] = { 12, 3 },
   stepPin[2] = {A6, A2},
   directionPin[2] = {A5, A1},
   feedPin[2] = {9, 10},
