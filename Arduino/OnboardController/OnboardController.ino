@@ -15,7 +15,7 @@ const int
   hallSensorPin[2] = { 12, 3 },
   stepPin[2] = {A6, A2},
   directionPin[2] = {A5, A1},
-  feedPin[2] = {9, 10},
+  feedPin[2] = {10, 9},
   batteryPin = A0
 ;
 
