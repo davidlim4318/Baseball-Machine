@@ -321,7 +321,7 @@ void checkConnectionTimeout() {
 //====================
 // controlSpeed function
 
-float maxTorqueFactor = 1;
+float maxTorqueFactor = 0.5;
 
 float throttleUpper;
 float throttleLower;

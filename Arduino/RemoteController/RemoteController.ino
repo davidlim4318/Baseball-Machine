@@ -483,6 +483,13 @@ float speedLowerFiltered;
 
 void displaySpeed() {
 
+  if (speedUpper > 200) {
+    speedUpper = 0;
+  }
+  if (speedLower > 200) {
+    speedLower = 0;
+  }
+
   speedUpperFiltered = alpha * speedUpper + (1 - alpha) * speedUpperFiltered;
   speedLowerFiltered = alpha * speedLower + (1 - alpha) * speedLowerFiltered;
 
