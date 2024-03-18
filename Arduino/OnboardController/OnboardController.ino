@@ -48,6 +48,7 @@ bool moveAutoX;
 bool moveAutoY;
 
 int feed;
+bool feedSequence;
 
 int speedUpper;
 int speedLower;
@@ -312,6 +313,7 @@ void checkConnectionTimeout() {
     moveAutoX = false;
     moveAutoY = false;
     feed = 0;
+    feedSequence = false;
   }
   else {
     connectionTimeout = false;
@@ -372,16 +374,36 @@ void moveY() {
 //====================
 // controlFeed function
 
+int feedSequenceStart;
+
+int feedForwardDelay = 1000;
+int feedBackwardDelay = 2000;
+
 void controlFeed() {
   if (feed == -1) {
+    feedSequence = false;
     digitalWrite(feedPin[0], LOW);
     digitalWrite(feedPin[1], HIGH);
   }
+  else if (feedSequence == true) {
+    if ((currentTime - feedSequenceStart) < feedForwardDelay) {
+      digitalWrite(feedPin[0], HIGH);
+      digitalWrite(feedPin[1], LOW);
+    }
+    else if ((currentTime - feedSequenceStart) < (feedForwardDelay + feedBackwardDelay)) {
+      digitalWrite(feedPin[0], LOW);
+      digitalWrite(feedPin[1], HIGH);
+    }
+    else {
+      feedSequence = false;
+    }
+  }
   else if (feed == 1) {
-    digitalWrite(feedPin[0], HIGH);
-    digitalWrite(feedPin[1], LOW);
+    feedSequenceStart = currentTime;
+    feedSequence = true;
   }
   else {
+    feedSequence = false;
     digitalWrite(feedPin[0], LOW);
     digitalWrite(feedPin[1], LOW);
   }
