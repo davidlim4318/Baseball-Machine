@@ -26,7 +26,7 @@ float wheelRadius = 4.875;  // 2.5
 float motorPoles = 14;   // 4
 
 int gearboxX = 40;
-int gearboxY = 20;
+int gearboxY = 100;
 
 int speedMaxX = 3;
 int speedMaxY = 3;
@@ -222,7 +222,7 @@ void loop() {
   moveX();
   moveY();
 
-  delay(1);
+  delayMicroseconds(500);
 }
 
 //====================
@@ -376,8 +376,9 @@ void moveY() {
 
 int feedSequenceStart;
 
-int feedForwardDelay = 1000;
-int feedBackwardDelay = 2000;
+int feedForwardDelay = 250;
+int feedStopDelay = 125;
+int feedBackwardDelay = feedForwardDelay/2;
 
 void controlFeed() {
   if (feed == -1) {
@@ -390,9 +391,17 @@ void controlFeed() {
       digitalWrite(feedPin[0], HIGH);
       digitalWrite(feedPin[1], LOW);
     }
-    else if ((currentTime - feedSequenceStart) < (feedForwardDelay + feedBackwardDelay)) {
+    else if ((currentTime - feedSequenceStart) < (feedForwardDelay + feedStopDelay)) {
+      digitalWrite(feedPin[0], LOW);
+      digitalWrite(feedPin[1], LOW);
+    }
+    else if ((currentTime - feedSequenceStart) < (feedForwardDelay + feedStopDelay + feedBackwardDelay)) {
       digitalWrite(feedPin[0], LOW);
       digitalWrite(feedPin[1], HIGH);
+    }
+    else if ((currentTime - feedSequenceStart) < (feedForwardDelay + 2*feedStopDelay + feedBackwardDelay)) {
+      digitalWrite(feedPin[0], LOW);
+      digitalWrite(feedPin[1], LOW);
     }
     else {
       feedSequence = false;
