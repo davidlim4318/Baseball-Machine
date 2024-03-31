@@ -1,5 +1,5 @@
 // Remote Controller Address: 48:27:E2:FD:6B:A4
-// Onboard Controller Address: EC:DA:3B:60:D6:18
+// Onboard Controller Address: EC:DA:3B:60:D1:98
 
 #include <Arduino.h>
 #include <esp_now.h>
@@ -11,11 +11,11 @@
 // Pins
 
 const int
-  escPin[2] = { 2, 11 },
-  hallSensorPin[2] = { 3, 12 },
+  escPin[2] = { 11, 2 },
+  hallSensorPin[2] = { 12, 3 },
   stepPin[2] = {A6, A2},
   directionPin[2] = {A5, A1},
-  feedPin[2] = {9, 10},
+  feedPin[2] = {10, 9},
   batteryPin = A0
 ;
 
@@ -25,17 +25,18 @@ const int
 float wheelRadius = 4.875;  // 2.5
 float motorPoles = 14;   // 4
 
-int gearboxX = 20;
-int gearboxY = 40;
+int gearboxX = 40;
+int gearboxY = 100;
 
-int speedMaxX = 10;
-int speedMaxY = 10;
+int speedMaxX = 3;
+int speedMaxY = 3;
 
 float stepSpeedMaxX = speedMaxX * gearboxX * 200 / 60.0;
 float stepSpeedMaxY = speedMaxY * gearboxY * 200 / 60.0;
 
-int accelerationTime = 3;
+int accelerationTime = 1;
 
+int period = 10;
 int currentTime = 0;
 
 int speedSetpointUpper;
@@ -47,6 +48,7 @@ bool moveAutoX;
 bool moveAutoY;
 
 int feed;
+bool feedSequence;
 
 int speedUpper;
 int speedLower;
@@ -195,55 +197,38 @@ void setup() {
 // Main loop
 
 void loop() {
-  currentTime = millis();
 
-  checkMeasureSpeedTimeout();
-  positionX = stepperX.currentPosition();
-  positionY = stepperY.currentPosition();
-  measureBattery();
+  if ((millis() - currentTime) > period) {
 
-  sendMessage();
-  checkConnectionTimeout();
+    currentTime = millis();
 
-  Serial.print(dataSize);
-  Serial.print(", ");
-  Serial.print(speedSetpointUpper);
-  Serial.print(", ");
-  Serial.print(speedUpper);
-  Serial.print(", ");
-  Serial.print(speedSetpointLower);
-  Serial.print(", ");
-  Serial.print(speedLower);
-  Serial.print(", ");
-  Serial.print(moveCommandX);
-  Serial.print(", ");
-  Serial.print(moveAutoX);
-  Serial.print(", ");
-  Serial.print(moveCommandY);
-  Serial.print(", ");
-  Serial.print(moveAutoY);
-  Serial.print(", ");
-  Serial.print(positionX);
-  Serial.print(", ");
-  Serial.print(positionY);
-  Serial.print(", ");
-  Serial.print(feed);
-  Serial.print(", ");
+    checkMeasureSpeedTimeout();
 
-  controlSpeed();
+    positionX = stepperX.currentPosition();
+    positionY = stepperY.currentPosition();
+
+    measureBattery();
+
+    sendMessage();
+    checkConnectionTimeout();
+
+    controlSpeed();
+
+    controlFeed();
+
+    printData();
+  }
 
   moveX();
   moveY();
 
-  controlFeed();
-
-  delay(10);
+  delayMicroseconds(500);
 }
 
 //====================
 // measureSpeedUpper/Lower functions
 
-int maxCount = motorPoles*10;
+int maxCount = motorPoles*5;
 
 int changeTime1 = 0;
 int changeCounter1 = 0;
@@ -295,7 +280,7 @@ void checkMeasureSpeedTimeout() {
 float voltage;
 
 void measureBattery() {
-  voltage = 0.005 * ( 3.2 * analogRead(batteryPin) ) / 4095 / 0.225 + 0.995 * voltage;
+  voltage = 0.005 * ( 3.3 * analogRead(batteryPin) ) / 4095 / 0.22 + 0.995 * voltage;
   batterySOC = 133.3 * (voltage - 12.65);
 }
 
@@ -315,7 +300,7 @@ void sendMessage() {
 //====================
 // checkConnectionTimeout function
 
-int connectionTimeoutDelay = 100;
+int connectionTimeoutDelay = 1000;
 
 void checkConnectionTimeout() {
   if (currentTime - receiveTime > connectionTimeoutDelay) {
@@ -328,6 +313,7 @@ void checkConnectionTimeout() {
     moveAutoX = false;
     moveAutoY = false;
     feed = 0;
+    feedSequence = false;
   }
   else {
     connectionTimeout = false;
@@ -337,19 +323,17 @@ void checkConnectionTimeout() {
 //====================
 // controlSpeed function
 
-float maxTorqueFactor = 0.1;
+float maxTorqueFactor = 0.5;
+
+float throttleUpper;
+float throttleLower;
 
 void controlSpeed() {
 
   float throttleMaxUpper = maxTorqueFactor + speedUpper / 5676.0;
-  float throttleUpper = constrain(speedSetpointUpper / 5676.0, 0, throttleMaxUpper);
+  throttleUpper = constrain(speedSetpointUpper / 5676.0, 0, throttleMaxUpper);
   float throttleMaxLower = maxTorqueFactor + speedLower / 5676.0;
-  float throttleLower = constrain(speedSetpointLower / 5676.0, 0, throttleMaxLower);
-
-  Serial.print(throttleUpper);
-  Serial.print(", ");
-  Serial.print(throttleLower);
-  Serial.println(" ");
+  throttleLower = constrain(speedSetpointLower / 5676.0, 0, throttleMaxLower);
   
   escUpper.writeMicroseconds(throttleUpper * 1000 + 1000);
   escLower.writeMicroseconds(throttleLower * 1000 + 1000);
@@ -390,17 +374,80 @@ void moveY() {
 //====================
 // controlFeed function
 
+int feedSequenceStart;
+
+int feedForwardDelay = 250;
+int feedStopDelay = 125;
+int feedBackwardDelay = feedForwardDelay/2;
+
 void controlFeed() {
   if (feed == -1) {
+    feedSequence = false;
     digitalWrite(feedPin[0], LOW);
     digitalWrite(feedPin[1], HIGH);
   }
+  else if (feedSequence == true) {
+    if ((currentTime - feedSequenceStart) < feedForwardDelay) {
+      digitalWrite(feedPin[0], HIGH);
+      digitalWrite(feedPin[1], LOW);
+    }
+    else if ((currentTime - feedSequenceStart) < (feedForwardDelay + feedStopDelay)) {
+      digitalWrite(feedPin[0], LOW);
+      digitalWrite(feedPin[1], LOW);
+    }
+    else if ((currentTime - feedSequenceStart) < (feedForwardDelay + feedStopDelay + feedBackwardDelay)) {
+      digitalWrite(feedPin[0], LOW);
+      digitalWrite(feedPin[1], HIGH);
+    }
+    else if ((currentTime - feedSequenceStart) < (feedForwardDelay + 2*feedStopDelay + feedBackwardDelay)) {
+      digitalWrite(feedPin[0], LOW);
+      digitalWrite(feedPin[1], LOW);
+    }
+    else {
+      feedSequence = false;
+    }
+  }
   else if (feed == 1) {
-    digitalWrite(feedPin[0], HIGH);
-    digitalWrite(feedPin[1], LOW);
+    feedSequenceStart = currentTime;
+    feedSequence = true;
   }
   else {
+    feedSequence = false;
     digitalWrite(feedPin[0], LOW);
     digitalWrite(feedPin[1], LOW);
   }
+}
+
+//====================
+// printData function
+
+void printData() {
+  Serial.print(dataSize);
+  Serial.print(", ");
+  Serial.print(speedSetpointUpper);
+  Serial.print(", ");
+  Serial.print(speedUpper);
+  Serial.print(", ");
+  Serial.print(speedSetpointLower);
+  Serial.print(", ");
+  Serial.print(speedLower);
+  Serial.print(", ");
+  Serial.print(throttleUpper);
+  Serial.print(", ");
+  Serial.print(throttleLower);
+  Serial.print(", ");
+  Serial.print(moveCommandX);
+  Serial.print(", ");
+  Serial.print(moveAutoX);
+  Serial.print(", ");
+  Serial.print(moveCommandY);
+  Serial.print(", ");
+  Serial.print(moveAutoY);
+  Serial.print(", ");
+  Serial.print(positionX);
+  Serial.print(", ");
+  Serial.print(positionY);
+  Serial.print(", ");
+  Serial.print(feed);
+  Serial.println(" ");
 }
