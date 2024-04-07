@@ -1,4 +1,4 @@
-// Remote Controller Address: 48:27:E2:FD:6B:A4
+// Remote Controller Address: 48:07:C2:DD:4B:84
 // Onboard Controller Address: EC:DA:3B:60:D1:98
 
 #include <Arduino.h>
@@ -428,7 +428,7 @@ void sendMessage() {
 //====================
 // checkConnectionTimeout function
 
-int connectionTimeoutDelay = 1000;
+int connectionTimeoutDelay = 10000;
 
 void checkConnectionTimeout() {
   if (currentTime - receiveTime > connectionTimeoutDelay) {
