@@ -72,7 +72,7 @@ AccelStepper stepperY(1, stepPin[1], directionPin[1]);
 //====================
 // ESP-NOW definitions to send message
 
-uint8_t broadcastAddress[] = { 0x48, 0x07, 0xC2, 0xDD, 0x4B, 0x84};
+uint8_t broadcastAddress[] = { 0x48, 0x07, 0xC2, 0xDD, 0x4B, 0x84 };
 
 typedef struct struct_message_onboard {
   int value1;
@@ -98,6 +98,8 @@ void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
 
 //====================
 // ESP-NOW definitions to receive message
+
+uint8_t MACAddress[] = { 0xEC, 0xDA, 0x3B, 0x60, 0xD1, 0x98 };
 
 typedef struct struct_message_remote {
   int value1;
@@ -171,6 +173,16 @@ void setup() {
 
   //====================
   // ESP-NOW setup
+
+  WiFi.mode(WIFI_OFF);
+  Serial.println(WiFi.macAddress());
+  if (esp_base_mac_addr_set(MACAddress) == ESP_OK) {
+    Serial.println("MAC address set successfully");
+  }
+  else {
+    Serial.println("Failed to set MAC address");
+  }
+  Serial.println(WiFi.macAddress());
 
   WiFi.mode(WIFI_STA);
 
